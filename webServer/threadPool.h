@@ -14,15 +14,15 @@
 #include <exception>
 #include "locker.h"
 
-/**
- * 线程池类
- */
+ /**
+  * 线程池类
+  */
 template<typename T>
 class threadPool {
 public:
     explicit threadPool(int threadNumber = 8, int maxRequests = 10000);
     ~threadPool();
-    bool append(T *request);
+    bool append(T* request);
 
 private:
     //工作线程运行的函数，它不断从工作队列中取出任务并执行之
@@ -31,9 +31,9 @@ private:
 
 private:
     int threadNumber;           //线程的数量
-    pthread_t *threads;         //线程池数组
+    pthread_t* threads;         //线程池数组
     int maxRequests;            //请求队列中最多允许的等待处理的请求的数量
-    std::list<T *> workQueue;   //请求队列
+    std::list<T*> workQueue;    //请求队列
     locker queueLocker;         //互斥锁
     semaphore queueStat;        //信号量 用于判断是否有任务需要处理
     bool stop;                  //是否结束线程
@@ -41,8 +41,8 @@ private:
 
 template<typename T>
 threadPool<T>::threadPool(int threadNumber, int maxRequests) :
-        threadNumber(threadNumber), maxRequests(maxRequests),
-        stop(false), threads(nullptr) {
+    threadNumber(threadNumber), maxRequests(maxRequests),
+    stop(false), threads(nullptr) {
 
     if (threadNumber <= 0 || maxRequests <= 0) {
         throw std::exception();
@@ -78,10 +78,10 @@ threadPool<T>::~threadPool() {
 }
 
 template<typename T>
-bool threadPool<T>::append(T *request) {
+bool threadPool<T>::append(T* request) {
     // 操作工作队列时一定要加锁，因为它被所有线程共享。
     this->queueLocker.lock();
-    if(this->workQueue.size() > this->maxRequests){
+    if (this->workQueue.size() > this->maxRequests) {
         queueLocker.unlock();
         return false;
     }
@@ -93,7 +93,7 @@ bool threadPool<T>::append(T *request) {
 }
 
 template<typename T>
-void *threadPool<T>::worker(void *arg) {
+void* threadPool<T>::worker(void* arg) {
     auto* pool = (threadPool*)arg;
     pool->run();
     return pool;
@@ -101,10 +101,10 @@ void *threadPool<T>::worker(void *arg) {
 
 template<typename T>
 void threadPool<T>::run() {
-    while(!this->stop){
+    while (!this->stop) {
         queueStat.wait();
         queueLocker.lock();
-        if(workQueue.empty()){
+        if (workQueue.empty()) {
             queueLocker.unlock();
             continue;
         }
@@ -113,7 +113,7 @@ void threadPool<T>::run() {
         workQueue.pop_front();
         queueLocker.unlock();
 
-        if(request == nullptr){
+        if (request == nullptr) {
             continue;
         }
 

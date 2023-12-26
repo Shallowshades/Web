@@ -24,7 +24,7 @@ extern void removefd(int epollfd, int fd);
 //修改epoll中的文件描述符
 extern void modfd(int epollfd, int fd, int ev);
 //添加信号捕捉
-void addSig(int sig, void(handler)(int)){
+void addSig(int sig, void(handler)(int)) {
     struct sigaction sa;
     memset(&sa, '\0', sizeof(sa));
     sa.sa_handler = handler;
@@ -34,7 +34,7 @@ void addSig(int sig, void(handler)(int)){
 
 int main(int argc, char* argv[]) {
 
-    if(argc <= 1){
+    if (argc <= 1) {
         printf("按照如下格式运行： %s port_number\n", basename(argv[0]));
         exit(-1);
     }
@@ -51,9 +51,10 @@ int main(int argc, char* argv[]) {
 
     //创建线程池，初始化线程池
     threadPool<http_conn>* pool = nullptr;
-    try{
+    try {
         pool = new threadPool<http_conn>;
-    }catch(...){
+    }
+    catch (...) {
         exit(-1);
     }
 
@@ -75,14 +76,14 @@ int main(int argc, char* argv[]) {
     serverAddr.sin_addr.s_addr = INADDR_ANY;
     serverAddr.sin_port = htons(port);
     int ret = bind(listenfd, (struct sockaddr*)&serverAddr, sizeof(serverAddr));
-    if(ret == -1){
+    if (ret == -1) {
         perror("bind");
         exit(-1);
     }
 
     //监听
     ret = listen(listenfd, 128);
-    if(ret == -1){
+    if (ret == -1) {
         perror("listen");
         exit(-1);
     }
@@ -95,48 +96,52 @@ int main(int argc, char* argv[]) {
     addfd(epollfd, listenfd, false);//非阻塞
     http_conn::epollfd = epollfd;
 
-    while(true){
+    while (true) {
         int num = epoll_wait(epollfd, events, MAX_EVENT, -1);
-        if(num < 0 && errno != EINTR){
+        if (num < 0 && errno != EINTR) {
             printf("epoll failure\n");
             break;
         }
 
         //循环遍历事件数组
-        for(int i=0;i<num;++i){
+        for (int i = 0;i < num;++i) {
             int sockfd = events[i].data.fd;
-            if(sockfd == listenfd){
+            if (sockfd == listenfd) {
                 //有新的客户端连接进来
                 struct sockaddr_in clientAddr;
                 socklen_t clientAddrLen = sizeof(clientAddr);
                 //accept阻塞的条件是没有一个完成了三次握手的连接。
                 //accept就是从队列里取节点，每个节点都是已经完成了三次握手的。
                 int connfd = accept(listenfd, (struct sockaddr*)&clientAddr, &clientAddrLen);
-                if(connfd == -1){
+                if (connfd == -1) {
                     printf("errno is : %d\n", errno);
                     continue;
                 }
 
                 //目前连接满了, 给客户端写一个信息，服务器内部正忙
-                if(http_conn::userCount >= MAX_FD){
+                if (http_conn::userCount >= MAX_FD) {
                     close(connfd);
                     continue;
                 }
 
                 //将新的客户端的数据初始化，放到数组中
                 users[connfd].init(connfd, clientAddr);
-            }else if(events[i].events & (EPOLLRDHUP | EPOLLHUP | EPOLLERR)){
+            }
+            else if (events[i].events & (EPOLLRDHUP | EPOLLHUP | EPOLLERR)) {
                 //对方异常断开或者错误事件
                 users[sockfd].close_conn();
-            }else if(events[i].events & EPOLLIN){
-                if(users[sockfd].read()){
+            }
+            else if (events[i].events & EPOLLIN) {
+                if (users[sockfd].read()) {
                     //一次性将所有数据都读完
-                    pool->append(users+sockfd);
-                }else{
+                    pool->append(users + sockfd);
+                }
+                else {
                     users[sockfd].close_conn();
                 }
-            }else if(events[i].events & EPOLLOUT){
-                if(!users[sockfd].write()){
+            }
+            else if (events[i].events & EPOLLOUT) {
+                if (!users[sockfd].write()) {
                     //一次性写完所有数据
                     users[sockfd].close_conn();
                 }
